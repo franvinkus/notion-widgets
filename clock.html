@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CS OS Clock</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f7f6f3;
+      --border: #e5e5e5;
+      --text: #191919;
+      --muted: #6b7280;
+      --accent: #0284c7;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #191919;
+      --card: #252525;
+      --border: #373737;
+      --text: #e6e6e6;
+      --muted: #9b9b9b;
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .card {
+      width: 100%;
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--accent);
+    }
+
+    #fmt-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    #fmt-btn:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    #time {
+      font-size: clamp(1.5rem, 13vw, 2.4rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.15;
+    }
+
+    #ampm {
+      font-size: 0.45em;
+      font-weight: 600;
+      color: var(--accent);
+      margin-left: 4px;
+    }
+
+    #date {
+      font-size: clamp(0.72rem, 4vw, 0.82rem);
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="top-bar">
+      <div class="status">
+        <span class="dot"></span>
+        <span>SYS // TIME</span>
+      </div>
+      <button id="fmt-btn" type="button" title="Toggle 12h / 24h">24H</button>
+    </div>
+    <div id="time">00:00:00</div>
+    <div id="date">LOADING...</div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+
+    function applyTheme() {
+      const forced = params.get("theme");
+      if (forced === "dark" || forced === "light") {
+        document.documentElement.dataset.theme = forced;
+        return;
+      }
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    }
+
+    applyTheme();
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+
+    let saved12h = false;
+    try {
+      saved12h = localStorage.getItem("cs_os_clock_12h") === "true";
+    } catch (e) {}
+
+    let is12h = params.get("format") === "12" || saved12h;
+    const fmtBtn = document.getElementById("fmt-btn");
+    const timeEl = document.getElementById("time");
+    const dateEl = document.getElementById("date");
+
+    function updateClock() {
+      const now = new Date();
+      let h = now.getHours();
+      const m = String(now.getMinutes()).padStart(2, "0");
+      const s = String(now.getSeconds()).padStart(2, "0");
+
+      if (is12h) {
+        const suffix = h >= 12 ? "PM" : "AM";
+        h = h % 12 || 12;
+        timeEl.innerHTML = `${String(h).padStart(2, "0")}:${m}:${s}<span id="ampm">${suffix}</span>`;
+        fmtBtn.textContent = "12H";
+      } else {
+        timeEl.textContent = `${String(h).padStart(2, "0")}:${m}:${s}`;
+        fmtBtn.textContent = "24H";
+      }
+
+      const weekday = now.toLocaleDateString("en-US", { weekday: "short" });
+      const month = now.toLocaleDateString("en-US", { month: "short" });
+      const day = String(now.getDate()).padStart(2, "0");
+      dateEl.textContent = `${weekday} // ${month} ${day}`;
+    }
+
+    fmtBtn.addEventListener("click", () => {
+      is12h = !is12h;
+      try {
+        localStorage.setItem("cs_os_clock_12h", String(is12h));
+      } catch (e) {}
+      updateClock();
+    });
+
+    updateClock();
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>
